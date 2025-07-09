@@ -173,6 +173,7 @@ cython_debug/
 # Replicate
 .cog
 /model_cache/*
+/assets/*
 *.png
 *.jpg
 *.jpeg
@@ -187,3 +188,4 @@ cython_debug/
 *.avi
 *.mkv
 *.flv
+# Exclude assets and cog folder

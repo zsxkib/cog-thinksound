@@ -1,147 +1,177 @@
-# Cog Template Repository
+<h1 align="center">ThinkSound</h1>
 
-This is a template repository for creating [Cog](https://github.com/replicate/cog) models that efficiently handle model weights with proper caching. It includes tools to upload model weights to Google Cloud Storage and generate download code for your `predict.py` file.
+<p align="center">
+  🌐
+  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=en">English</a> |
+  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=zh-CN">简体中文</a> |
+  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=zh-TW">繁體中文</a> |
+  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=es">Español</a> |
+  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=fr">Français</a> |
+  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=ja">日本語</a>
+  
+</p>
 
-[![Replicate](https://replicate.com/zsxkib/model-name/badge)](https://replicate.com/zsxkib/model-name)
+<p align="center">
+  <a href="https://arxiv.org/pdf/2506.21448">
+    <img src="https://img.shields.io/badge/arXiv-2506.21448-b31b1b.svg" alt="arXiv"/>
+  </a>
+  &nbsp;
+  <a href="https://thinksound-project.github.io/">
+    <img src="https://img.shields.io/badge/Online%20Demo-🌐-blue" alt="Online Demo"/>
+  </a>
+  &nbsp;
+  <a href="https://huggingface.co/spaces/FunAudioLLM/ThinkSound">
+    <img src="https://img.shields.io/badge/HuggingFace-Spaces-orange?logo=huggingface" alt="Hugging Face"/>
+  </a>
+  &nbsp;
+  <a href="https://modelscope.cn/studios/iic/ThinkSound">
+    <img src="https://img.shields.io/badge/ModelScope-在线体验-green" alt="ModelScope"/>
+  </a>
+</p>
 
-## Getting Started
-
-To use this template for your own model:
-
-1. Clone this repository
-2. Modify `predict.py` with your model's implementation
-3. Update `cog.yaml` with your model's dependencies
-4. Use `cache_manager.py` to upload and manage model weights
-
-## Repository Structure
-
-- `predict.py`: The main model implementation file 
-- `cache_manager.py`: Script for uploading model weights to GCS and generating download code
-- `cog.yaml`: Cog configuration file that defines your model's environment
-
-## Managing Model Weights with cache_manager.py
-
-A key feature of this template is the `cache_manager.py` script, which helps you:
-
-1. Upload model weights to Google Cloud Storage (GCS)
-2. Generate code for downloading those weights in your `predict.py`
-3. Handle both individual files and directories efficiently
-
-### Prerequisites for Using cache_manager.py
-
-- Google Cloud SDK installed and configured (`gcloud` command)
-- Permission to upload to the specified GCS bucket (default: `gs://replicate-weights/`)
-- `tar` command available in your PATH
-
-### Basic Usage
-
-```bash
-python cache_manager.py --model-name your-model-name --local-dirs model_cache
-```
-
-This will:
-1. Find files and directories in the `model_cache` directory
-2. Create tar archives of each directory
-3. Upload both individual files and tar archives to GCS
-4. Generate code snippets for downloading the weights in your `predict.py`
-
-### Advanced Usage
-
-```bash
-python cache_manager.py \
-    --model-name your-model-name \
-    --local-dirs model_cache weights \
-    --gcs-base-path gs://replicate-weights/ \
-    --cdn-base-url https://weights.replicate.delivery/default/ \
-    --keep-tars
-```
-
-#### Parameters
-
-- `--model-name`: Required. The name of your model (used in paths)
-- `--local-dirs`: Required. One or more local directories to process
-- `--gcs-base-path`: Optional. Base Google Cloud Storage path
-- `--cdn-base-url`: Optional. Base CDN URL
-- `--keep-tars`: Optional. Keep the generated .tar files locally after upload
-
-## Workflow Example
-
-1. **Develop your model locally**:
-   ```bash
-   # Run your model once to download weights to model_cache
-   cog predict -i prompt="test"
-   ```
-
-2. **Upload model weights**:
-   ```bash
-   python cache_manager.py --model-name your-model-name --local-dirs model_cache
-   ```
-
-3. **Copy the generated code snippet** into your `predict.py`
-
-4. **Test that the model can download weights**:
-   ```bash
-   rm -rf model_cache
-   cog predict -i prompt="test"
-   ```
-
-## Example Implementation
-
-The template comes with a sample Stable Diffusion implementation in `predict.py` that demonstrates:
-
-- Setting up the model cache directory
-- Downloading weights from GCS with progress reporting
-- Setting environment variables for model caching
-- Random seed generation for reproducibility
-- Output format and quality options
-
-## Best Practices
-
-- **Environment Variables**: Set cache-related environment variables early
-  ```python
-  os.environ["HF_HOME"] = MODEL_CACHE
-  os.environ["TORCH_HOME"] = MODEL_CACHE
-  # etc.
-  ```
-
-- **Seed Management**: Provide a seed parameter and implement random seed generation
-  ```python
-  if seed is None:
-      seed = int.from_bytes(os.urandom(2), "big")
-  print(f"Using seed: {seed}")
-  ```
-
-- **Output Formats**: Support multiple output formats (webp, jpg, png) with quality controls
-  ```python
-  output_format: str = Input(
-      description="Format of the output image",
-      choices=["webp", "jpg", "png"],
-      default="webp"
-  )
-  output_quality: int = Input(
-      description="The image compression quality...",
-      ge=1, le=100, default=80
-  )
-  ```
-
-## Deploying to Replicate
-
-After setting up your model, you can push it to [Replicate](https://replicate.com):
-
-1. Create a new model on Replicate
-2. Push your model:
-   ```bash
-   cog push r8.im/username/model-name
-   ```
-
-## License
-
-MIT
+<p align="center">
+  If you find this project useful,<br>
+  a star ⭐ on GitHub would be greatly appreciated!
+</p>
 
 ---
 
+**ThinkSound** is a unified Any2Audio generation framework with flow matching guided by Chain-of-Thought (CoT) reasoning.
+
+PyTorch implementation for multimodal audio generation and editing: generate or edit audio from video, text, and audio, powered by step-by-step reasoning from Multimodal Large Language Models (MLLMs).
+
+![Teaser](assets/figs/fig1_teaser.png)
 ---
 
-⭐ Star this on [GitHub](https://github.com/zsxkib/model-name)!
+## 📰 News
+- **2025.07** &nbsp;  🔧 Major update: model lightweighted and optimized memory and GPU usage, now supports high-throughput audio generation at scale!
+- **2025.07** &nbsp; 🔥Online demo on [Hugging Face Spaces](https://huggingface.co/spaces/FunAudioLLM/ThinkSound) and [ModelScope](https://modelscope.cn/studios/iic/ThinkSound) for interactive experience!
+- **2025.07** &nbsp; 🔥Released inference scripts and web interface; 
+- **2025.06** &nbsp; 🔥[ThinkSound paper](https://arxiv.org/pdf/2506.21448) released on arXiv!
+- **2025.06** &nbsp; 🔥[Online Demo](http://thinksound-project.github.io/) is live - try it now!
 
-👋 Follow `zsxkib` on [Twitter/X](https://twitter.com/zsakib_)
+---
+
+
+## 🚀 Features
+
+- **Any2Audio**: Generate audio from arbitrary modalities — video, text, audio, or their combinations.
+- **Video-to-Audio SOTA**: Achieves state-of-the-art results on multiple V2A benchmarks.
+- **CoT-Driven Reasoning**: Chain-of-Thought reasoning for compositional and controllable audio generation via MLLMs.
+- **Interactive Object-centric Editing**: Refine or edit specific sound events by clicking on visual objects or using text instructions.
+- **Unified Framework**: One foundation model supports generation, editing, and interactive workflow.
+
+---
+
+## ✨ Method Overview
+
+ThinkSound decomposes audio generation and editing into three interactive stages, all guided by MLLM-based Chain-of-Thought (CoT) reasoning:
+
+1. **Foley Generation:** Generate foundational, semantically and temporally aligned soundscapes from video.
+2. **Object-Centric Refinement:** Refine or add sounds for user-specified objects via clicks or regions in the video.
+3. **Targeted Audio Editing:** Modify generated audio using high-level natural language instructions.
+
+![ThinkSound Overview](assets/figs/fig3_model.png)
+<!-- A large-scale CoT-annotated dataset (**AudioCoT**) is used to train both the reasoning module and the unified audio foundation model.
+![AudioCoT Pipeline](assets/figs/fig2_dataset.png) -->
+
+---
+
+## ⚡ Quick Start
+
+**Environment Preparation:**
+```bash
+git clone https://github.com/liuhuadai/ThinkSound.git
+cd ThinkSound
+pip install -r requirements.txt
+conda install -y -c conda-forge 'ffmpeg<7'
+# Download pretrained weights https://huggingface.co/liuhuadai/ThinkSound to Directory ckpts/
+# model weights can be also downloaded from https://www.modelscope.cn/models/iic/ThinkSound
+git lfs install
+git clone https://huggingface.co/liuhuadai/ThinkSound ckpts
+```
+
+**Make it executable**
+```bash
+chmod +x scripts/demo.sh
+```
+
+**Run the script**
+```bash
+./scripts/demo.sh <video_path> <title> <CoT description> [use-half]
+```
+Add use-half at the end to enable half precision inference, which reduces GPU memory usage.
+
+Use the `eval_batch.sh` script to extract features from a batch of videos and run inference to generate audio outputs.
+
+```bash
+chmod +x scripts/eval_batch.sh
+./scripts/eval_batch.sh <video_path> <csv_path> <save_path (optional)> [use-half]
+```
+
+`<video_path>`:Path to the root directory containing video files.
+  * **Requirement**: All videos should be in `.mp4` format.
+  * **Assumption**: All videos have **equal duration**.
+
+`<csv_path>`:Path to the CSV file containing text descriptions (e.g., captions, CoT prompts) for each video.
+  * Format should be similar to `demo_test.csv`, where each row corresponds to a video and includes at least the filename (without extension) and associated text.
+
+`<save_path>` (optional):
+  Directory where the generated audios will be saved.
+  * Defaults to `results/features` if not provided.
+
+`[use-half]` (optional):
+
+
+### Web Interface Usage
+
+For an interactive experience, launch the Gradio web interface:
+
+```bash
+python app.py
+```
+
+---
+
+## 📝 TODO
+
+- ☐ Release training scripts for ThinkSound models
+- ☐ Open-source AudioCoT dataset and automated pipeline
+- ☐ Provide detailed documentation and API reference
+- ☐ Add support for additional modalities and downstream tasks
+
+---
+
+## 📄 License
+
+This project is released under the [Apache 2.0 License](LICENSE).
+
+> **Note:**  
+> The code, models, and dataset are **for research and educational purposes only**.  
+> **Commercial use is NOT permitted.**
+>
+> For commercial licensing, please contact the authors.
+
+---
+
+## 📖 Citation
+
+If you find ThinkSound useful in your research or work, please cite our paper:
+
+```bibtex
+@misc{liu2025thinksoundchainofthoughtreasoningmultimodal,
+      title={ThinkSound: Chain-of-Thought Reasoning in Multimodal Large Language Models for Audio Generation and Editing}, 
+      author={Huadai Liu and Jialei Wang and Kaicheng Luo and Wen Wang and Qian Chen and Zhou Zhao and Wei Xue},
+      year={2025},
+      eprint={2506.21448},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2506.21448}, 
+}
+```
+
+---
+
+## 📬 Contact
+
+✨ Feel free to [open an issue](https://github.com/liuhuadai/ThinkSound/issues) or contact us via email ([liuhuadai@zju.edu.cn](mailto:liuhuadai@zju.edu.cn)) if you have any questions or suggestions!

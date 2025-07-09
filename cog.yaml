@@ -7,7 +7,7 @@ build:
 
   # a list of ubuntu apt packages to install
   system_packages:
-    - "libgl1-mesa-glx"
+    - "libgl1-mesa-dev"
     - "libglib2.0-0"
 
   # python version in the form '3.11' or '3.11.4'
@@ -20,6 +20,7 @@ build:
   run:
   - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/latest/download/pget_$(uname -s)_$(uname -m)"
   - chmod +x /usr/local/bin/pget
+  - pip install flash-attn --no-build-isolation
 
 # predict.py defines how predictions are run on your model
-predict: "predict.py:Predictor"
+predict: "cog_predict.py:Predictor"
