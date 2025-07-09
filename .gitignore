@@ -172,7 +172,7 @@ cython_debug/
 
 # Replicate
 .cog
-/model_cache/*
+/weights/*
 /assets/*
 *.png
 *.jpg

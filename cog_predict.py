@@ -16,28 +16,44 @@ Paper: https://arxiv.org/abs/2506.21448
 """
 
 import os
+import time
 import json
-import torch
-import torchaudio
 import tempfile
 import subprocess
 import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
+
+# Model caching configuration
+MODEL_CACHE = "weights"
+BASE_URL = f"https://weights.replicate.delivery/default/thinksound/{MODEL_CACHE}/"
+
+# Set environment variables for model caching
+os.environ["HF_HOME"] = MODEL_CACHE
+os.environ["TORCH_HOME"] = MODEL_CACHE
+os.environ["HF_DATASETS_CACHE"] = MODEL_CACHE
+os.environ["TRANSFORMERS_CACHE"] = MODEL_CACHE
+os.environ["HUGGINGFACE_HUB_CACHE"] = MODEL_CACHE
+
+# Third-party imports
+import torch
+import torchaudio
+import torch.nn.functional as F
+from lightning.pytorch import seed_everything
+from transformers import AutoProcessor
+from torchvision.transforms import v2
+from torio.io import StreamingMediaDecoder
+from moviepy.editor import VideoFileClip
+from huggingface_hub import hf_hub_download
+
+# Cog imports
 from cog import BasePredictor, Input, Path as CogPath
 
-from lightning.pytorch import seed_everything
-
+# Local imports
 from ThinkSound.models import create_model_from_config
 from ThinkSound.models.utils import load_ckpt_state_dict
 from ThinkSound.inference.sampling import sample, sample_discrete_euler
 from data_utils.v2a_utils.feature_utils_224 import FeaturesUtils
-from torchvision.transforms import v2
-from torio.io import StreamingMediaDecoder
-from transformers import AutoProcessor
-import torch.nn.functional as F
-from huggingface_hub import hf_hub_download
-from moviepy.editor import VideoFileClip
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -54,6 +70,13 @@ DEFAULT_SEED = 10086
 DEFAULT_SAMPLE_RATE = 44100
 CFG_SCALE = 5.0
 NUM_INFERENCE_STEPS = 24
+
+# Padding constraints (from original Gradio demo)
+MAX_CLIP_PADDING = 4   # "no more than 2 frames" -> < 4
+MAX_SYNC_PADDING = 12  # "no more than 2" -> < 12
+
+# Duration calculation constants
+LATENT_FRAMES_PER_SECOND = 194 / 9  # ~21.56 frames per second
 
 
 def pad_to_square(video_tensor: torch.Tensor) -> torch.Tensor:
@@ -87,7 +110,8 @@ class VideoPreprocessor:
     Video preprocessing class for ThinkSound model.
     
     Handles video loading, frame extraction at multiple frame rates, and feature preparation
-    for both CLIP (8fps) and synchronization (25fps) encoders.
+    for both CLIP (8fps) and synchronization (25fps) encoders. This class replicates the 
+    VGGSound dataset preprocessing logic from the original Gradio demo.
     """
 
     def __init__(
@@ -212,7 +236,7 @@ class VideoPreprocessor:
             clip_chunk = self._pad_frames(
                 clip_chunk, 
                 self.clip_expected_length, 
-                max_padding=4, 
+                max_padding=MAX_CLIP_PADDING, 
                 stream_name="CLIP"
             )
         
@@ -230,7 +254,7 @@ class VideoPreprocessor:
             sync_chunk = self._pad_frames(
                 sync_chunk, 
                 self.sync_expected_length, 
-                max_padding=12, 
+                max_padding=MAX_SYNC_PADDING, 
                 stream_name="sync"
             )
         
@@ -270,6 +294,22 @@ def get_video_duration(video_path: str) -> float:
         return video.duration
 
 
+def download_weights(url: str, dest: str) -> None:
+    """Download model weights using pget."""
+    start = time.time()
+    logger.info(f"Initiating download from URL: {url}")
+    logger.info(f"Destination path: {dest}")
+    
+    if ".tar" in dest:
+        dest = os.path.dirname(dest)
+    
+    command = ["pget", "-vf" + ("x" if ".tar" in url else ""), url, dest]
+    
+    logger.info(f"Running command: {' '.join(command)}")
+    subprocess.check_call(command, close_fds=False)
+    logger.info(f"Download completed in: {time.time() - start:.2f} seconds")
+
+
 class Predictor(BasePredictor):
     """
     ThinkSound model predictor for Replicate.
@@ -297,8 +337,10 @@ class Predictor(BasePredictor):
         seed_everything(DEFAULT_SEED, workers=True)
         logger.info(f"Set random seed to {DEFAULT_SEED}")
 
-        # Download and load models
+        # Download and cache model weights
         self._download_model_weights()
+        
+        # Initialize model components        
         self._load_feature_extractor()
         self._load_diffusion_model()
         
@@ -316,28 +358,27 @@ class Predictor(BasePredictor):
             logger.warning("CUDA not available, using CPU (will be slow)")
 
     def _download_model_weights(self) -> None:
-        """Download model checkpoints from HuggingFace."""
-        logger.info("Downloading model checkpoints from HuggingFace...")
-        
-        self.vae_ckpt = hf_hub_download(
-            repo_id="FunAudioLLM/ThinkSound", 
-            filename="vae.ckpt", 
-            repo_type="model"
-        )
-        
-        self.synchformer_ckpt = hf_hub_download(
-            repo_id="FunAudioLLM/ThinkSound", 
-            filename="synchformer_state_dict.pth", 
-            repo_type="model"
-        )
-        
-        self.diffusion_ckpt = hf_hub_download(
-            repo_id="FunAudioLLM/ThinkSound", 
-            filename="thinksound_light.ckpt", 
-            repo_type="model"
-        )
-        
-        logger.info("Model checkpoints downloaded successfully")
+        """Download and cache model weights if not already present."""
+        # Create model cache directory if it doesn't exist
+        os.makedirs(MODEL_CACHE, exist_ok=True)
+            
+        model_files = [
+            "vae.ckpt",
+            "synchformer_state_dict.pth",
+            "thinksound_light.ckpt",
+        ]
+
+        for model_file in model_files:
+            url = BASE_URL + model_file
+            filename = url.split("/")[-1]
+            dest_path = os.path.join(MODEL_CACHE, filename)
+            if not os.path.exists(dest_path.replace(".tar", "")):
+                download_weights(url, dest_path)
+
+        # Set instance variables for model file paths
+        self.vae_ckpt = os.path.join(MODEL_CACHE, "vae.ckpt")
+        self.synchformer_ckpt = os.path.join(MODEL_CACHE, "synchformer_state_dict.pth")
+        self.diffusion_ckpt = os.path.join(MODEL_CACHE, "thinksound_light.ckpt")
 
     def _load_feature_extractor(self) -> None:
         """Initialize and load the multi-modal feature extractor."""
@@ -385,6 +426,22 @@ class Predictor(BasePredictor):
             description="Chain-of-Thought description providing detailed reasoning about the desired audio (optional)", 
             default=""
         ),
+        cfg_scale: float = Input(
+            description="Classifier-free guidance scale. Higher values follow conditioning more closely but may reduce creativity", 
+            default=5.0, 
+            ge=1.0, 
+            le=20.0
+        ),
+        num_inference_steps: int = Input(
+            description="Number of diffusion denoising steps. More steps = higher quality but slower generation", 
+            default=24, 
+            ge=10, 
+            le=100
+        ),
+        seed: Optional[int] = Input(
+            description="Random seed for reproducible outputs. Leave empty for random seed", 
+            default=None
+        ),
     ) -> CogPath:
         """
         Generate audio from video using ThinkSound.
@@ -397,11 +454,21 @@ class Predictor(BasePredictor):
             video: Input video file path
             caption: Brief description of the video content
             cot: Detailed Chain-of-Thought description for audio generation
+            cfg_scale: Strength of conditioning guidance (1.0-20.0)
+            num_inference_steps: Number of diffusion steps (10-100)
+            seed: Random seed for reproducibility (None for random)
             
         Returns:
             Path to the output video with generated audio
         """
         logger.info("🎬 Starting ThinkSound audio generation...")
+        
+        # Handle seed
+        if seed is None:
+            import random
+            seed = random.randint(0, 2**31 - 1)
+        seed_everything(seed, workers=True)
+        logger.info(f"🎲 Using seed: {seed}")
         
         # Prepare inputs
         video_path = str(video)
@@ -416,7 +483,7 @@ class Predictor(BasePredictor):
         features = self._extract_features(video_path, caption, cot, duration_sec)
         
         # Generate audio using diffusion
-        audio_tensor = self._generate_audio(features, duration_sec)
+        audio_tensor = self._generate_audio(features, duration_sec, cfg_scale, num_inference_steps)
         
         # Combine audio with video
         output_path = self._combine_audio_video(video_path, audio_tensor)
@@ -469,14 +536,14 @@ class Predictor(BasePredictor):
         
         return features
 
-    def _generate_audio(self, features: Dict[str, Any], duration_sec: float) -> torch.Tensor:
+    def _generate_audio(self, features: Dict[str, Any], duration_sec: float, cfg_scale: float, num_inference_steps: int) -> torch.Tensor:
         """Generate audio using the diffusion model."""
         logger.info("🎵 Generating audio with diffusion model...")
         
         # Calculate sequence lengths
         sync_seq_len = features['sync_features'].shape[0]
         clip_seq_len = features['metaclip_features'].shape[0]
-        latent_seq_len = int(194 / 9 * duration_sec)
+        latent_seq_len = int(LATENT_FRAMES_PER_SECOND * duration_sec)
         
         # Update model sequence lengths
         self.diffusion_model.model.model.update_seq_lengths(
@@ -501,17 +568,17 @@ class Predictor(BasePredictor):
         cond_inputs = self.diffusion_model.get_conditioning_inputs(conditioning)
         noise = torch.randn([batch_size, self.diffusion_model.io_channels, latent_seq_len]).to(self.device)
         
-        logger.info(f"Running {NUM_INFERENCE_STEPS} diffusion steps...")
+        logger.info(f"Running {num_inference_steps} diffusion steps with CFG scale {cfg_scale}...")
         with torch.amp.autocast(self.device):
             if self.diffusion_model.diffusion_objective == "v":
                 latents = sample(
-                    self.diffusion_model.model, noise, NUM_INFERENCE_STEPS, 0, 
-                    **cond_inputs, cfg_scale=CFG_SCALE, batch_cfg=True
+                    self.diffusion_model.model, noise, num_inference_steps, 0, 
+                    **cond_inputs, cfg_scale=cfg_scale, batch_cfg=True
                 )
             elif self.diffusion_model.diffusion_objective == "rectified_flow":
                 latents = sample_discrete_euler(
-                    self.diffusion_model.model, noise, NUM_INFERENCE_STEPS, 
-                    **cond_inputs, cfg_scale=CFG_SCALE, batch_cfg=True
+                    self.diffusion_model.model, noise, num_inference_steps, 
+                    **cond_inputs, cfg_scale=cfg_scale, batch_cfg=True
                 )
             else:
                 raise ValueError(f"Unknown diffusion objective: {self.diffusion_model.diffusion_objective}")
