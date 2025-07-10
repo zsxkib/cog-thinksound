@@ -17,7 +17,7 @@ __pycache__
 /venv
 
 # Replicate
-/model_cache/*
+/weights/*
 *.png
 *.jpg
 *.jpeg

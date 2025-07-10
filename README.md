@@ -1,177 +1,133 @@
-<h1 align="center">ThinkSound</h1>
+# ThinkSound: Step-by-step reasoning for video-to-audio generation
 
-<p align="center">
-  🌐
-  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=en">English</a> |
-  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=zh-CN">简体中文</a> |
-  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=zh-TW">繁體中文</a> |
-  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=es">Español</a> |
-  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=fr">Français</a> |
-  <a href="https://openaitx.github.io/view.html?user=FunAudioLLM&project=ThinkSound&lang=ja">日本語</a>
-  
-</p>
+[![Replicate](https://replicate.com/zsxkib/thinksound/badge)](https://replicate.com/zsxkib/thinksound)
 
-<p align="center">
-  <a href="https://arxiv.org/pdf/2506.21448">
-    <img src="https://img.shields.io/badge/arXiv-2506.21448-b31b1b.svg" alt="arXiv"/>
-  </a>
-  &nbsp;
-  <a href="https://thinksound-project.github.io/">
-    <img src="https://img.shields.io/badge/Online%20Demo-🌐-blue" alt="Online Demo"/>
-  </a>
-  &nbsp;
-  <a href="https://huggingface.co/spaces/FunAudioLLM/ThinkSound">
-    <img src="https://img.shields.io/badge/HuggingFace-Spaces-orange?logo=huggingface" alt="Hugging Face"/>
-  </a>
-  &nbsp;
-  <a href="https://modelscope.cn/studios/iic/ThinkSound">
-    <img src="https://img.shields.io/badge/ModelScope-在线体验-green" alt="ModelScope"/>
-  </a>
-</p>
+This repository contains a Cog implementation of ThinkSound, a video-to-audio generation model that thinks through what sounds should happen in your videos. This Cog package makes it easy to run ThinkSound locally or deploy it to Replicate.
 
-<p align="center">
-  If you find this project useful,<br>
-  a star ⭐ on GitHub would be greatly appreciated!
-</p>
+> **⚠️ For research and educational use only. No commercial use.**
 
----
+ThinkSound doesn't just match sounds to objects like other models. Instead, it thinks through what sounds should happen and when, creating natural audio that fits the mood, timing, and context of your video. It's like having an AI sound designer that watches your video and creates a complete audio track that fits perfectly.
 
-**ThinkSound** is a unified Any2Audio generation framework with flow matching guided by Chain-of-Thought (CoT) reasoning.
+Original research:
+*   Original Project: [liuhuadai/ThinkSound](https://github.com/liuhuadai/ThinkSound)
+*   Research Paper: [ThinkSound: Chain-of-Thought Reasoning in Multimodal Large Language Models for Audio Generation and Editing](https://arxiv.org/abs/2506.21448)
+*   Model Weights: [FunAudioLLM/ThinkSound](https://huggingface.co/FunAudioLLM/ThinkSound)
+*   This Cog implementation: [zsxkib on GitHub](https://github.com/zsxkib)
 
-PyTorch implementation for multimodal audio generation and editing: generate or edit audio from video, text, and audio, powered by step-by-step reasoning from Multimodal Large Language Models (MLLMs).
+## Prerequisites
 
-![Teaser](assets/figs/fig1_teaser.png)
----
+*   **Docker**: [Install Docker](https://docs.docker.com/get-docker/)
+*   **Cog**: [Install Cog](https://github.com/replicate/cog#install)
+*   **NVIDIA GPU**: At least 16GB memory (A100, H100, or RTX 4090+ recommended)
 
-## 📰 News
-- **2025.07** &nbsp;  🔧 Major update: model lightweighted and optimized memory and GPU usage, now supports high-throughput audio generation at scale!
-- **2025.07** &nbsp; 🔥Online demo on [Hugging Face Spaces](https://huggingface.co/spaces/FunAudioLLM/ThinkSound) and [ModelScope](https://modelscope.cn/studios/iic/ThinkSound) for interactive experience!
-- **2025.07** &nbsp; 🔥Released inference scripts and web interface; 
-- **2025.06** &nbsp; 🔥[ThinkSound paper](https://arxiv.org/pdf/2506.21448) released on arXiv!
-- **2025.06** &nbsp; 🔥[Online Demo](http://thinksound-project.github.io/) is live - try it now!
+## Quick start
 
----
+1. **Clone this repository:**
+   ```bash
+   git clone https://github.com/zsxkib/cog-thinksound.git
+   cd cog-thinksound
+   ```
 
+2. **Run predictions:**
+   
+   Basic usage:
+   ```bash
+   # Generate audio from video
+   cog predict -i video=@your_video.mp4
+   
+   # Add a caption for better results
+   cog predict -i video=@cooking.mp4 -i caption="Cooking pasta in a kitchen"
+   ```
+   
+   Advanced usage with step-by-step reasoning:
+   ```bash
+   # Detailed audio description for precise control
+   cog predict \
+     -i video=@rain.mp4 \
+     -i caption="Rain on window" \
+     -i cot="Begin with gentle raindrops hitting glass, gradually building to steady rainfall. Add subtle ambient sounds of water flowing and distant thunder."
+   ```
+   
+   Professional controls:
+   ```bash
+   # High quality generation
+   cog predict \
+     -i video=@nature.mp4 \
+     -i caption="Forest wildlife" \
+     -i cot="Create layered nature sounds with bird calls, rustling leaves, and distant animal sounds" \
+     -i num_inference_steps=50 \
+     -i cfg_scale=7.0
+   
+   # Fast generation
+   cog predict \
+     -i video=@test.mp4 \
+     -i caption="Quick test" \
+     -i num_inference_steps=15
+   
+   # Reproducible results
+   cog predict \
+     -i video=@demo.mp4 \
+     -i caption="Demo video" \
+     -i seed=42
+   ```
 
-## 🚀 Features
+## Parameters
 
-- **Any2Audio**: Generate audio from arbitrary modalities — video, text, audio, or their combinations.
-- **Video-to-Audio SOTA**: Achieves state-of-the-art results on multiple V2A benchmarks.
-- **CoT-Driven Reasoning**: Chain-of-Thought reasoning for compositional and controllable audio generation via MLLMs.
-- **Interactive Object-centric Editing**: Refine or edit specific sound events by clicking on visual objects or using text instructions.
-- **Unified Framework**: One foundation model supports generation, editing, and interactive workflow.
+- **video**: Input video file (MP4, AVI, MOV, etc.)
+- **caption**: Brief description of video content (optional but recommended)
+- **cot**: Detailed step-by-step description of desired audio (optional)
+- **cfg_scale** (1.0-20.0, default 5.0): How closely to follow text descriptions
+- **num_inference_steps** (10-100, default 24): Quality vs speed tradeoff
+- **seed**: Random seed for reproducible outputs (leave empty for random)
 
----
+## Deploy your own version
 
-## ✨ Method Overview
-
-ThinkSound decomposes audio generation and editing into three interactive stages, all guided by MLLM-based Chain-of-Thought (CoT) reasoning:
-
-1. **Foley Generation:** Generate foundational, semantically and temporally aligned soundscapes from video.
-2. **Object-Centric Refinement:** Refine or add sounds for user-specified objects via clicks or regions in the video.
-3. **Targeted Audio Editing:** Modify generated audio using high-level natural language instructions.
-
-![ThinkSound Overview](assets/figs/fig3_model.png)
-<!-- A large-scale CoT-annotated dataset (**AudioCoT**) is used to train both the reasoning module and the unified audio foundation model.
-![AudioCoT Pipeline](assets/figs/fig2_dataset.png) -->
-
----
-
-## ⚡ Quick Start
-
-**Environment Preparation:**
-```bash
-git clone https://github.com/liuhuadai/ThinkSound.git
-cd ThinkSound
-pip install -r requirements.txt
-conda install -y -c conda-forge 'ffmpeg<7'
-# Download pretrained weights https://huggingface.co/liuhuadai/ThinkSound to Directory ckpts/
-# model weights can be also downloaded from https://www.modelscope.cn/models/iic/ThinkSound
-git lfs install
-git clone https://huggingface.co/liuhuadai/ThinkSound ckpts
-```
-
-**Make it executable**
-```bash
-chmod +x scripts/demo.sh
-```
-
-**Run the script**
-```bash
-./scripts/demo.sh <video_path> <title> <CoT description> [use-half]
-```
-Add use-half at the end to enable half precision inference, which reduces GPU memory usage.
-
-Use the `eval_batch.sh` script to extract features from a batch of videos and run inference to generate audio outputs.
+Push your own version to Replicate:
 
 ```bash
-chmod +x scripts/eval_batch.sh
-./scripts/eval_batch.sh <video_path> <csv_path> <save_path (optional)> [use-half]
+cog login
+cog push r8.im/your-username/thinksound
 ```
 
-`<video_path>`:Path to the root directory containing video files.
-  * **Requirement**: All videos should be in `.mp4` format.
-  * **Assumption**: All videos have **equal duration**.
+## How this works
 
-`<csv_path>`:Path to the CSV file containing text descriptions (e.g., captions, CoT prompts) for each video.
-  * Format should be similar to `demo_test.csv`, where each row corresponds to a video and includes at least the filename (without extension) and associated text.
+This Cog package includes optimizations that make it faster and easier to use:
 
-`<save_path>` (optional):
-  Directory where the generated audios will be saved.
-  * Defaults to `results/features` if not provided.
+- **Dual-GPU support**: Uses multiple GPUs when available for faster processing
+- **Smart caching**: Reuses model weights between runs so you don't wait as long
+- **Video processing**: Efficient frame extraction at multiple rates
+- **Fine-tuning controls**: Adjust quality, creativity, and reproducibility
+- **Memory management**: Handles large models efficiently without running out of memory
 
-`[use-half]` (optional):
+## Technical details
 
+The implementation processes video at two frame rates:
+- 8fps for understanding what's happening in the video
+- 25fps for precise timing between audio and video
 
-### Web Interface Usage
+Text processing uses multiple encoders:
+- MetaCLIP for connecting visual content with text descriptions
+- T5 for understanding detailed step-by-step reasoning
 
-For an interactive experience, launch the Gradio web interface:
+Audio generation uses a process with configurable steps and guidance strength.
 
-```bash
-python app.py
-```
+## License and usage
 
----
+> **Important**: This model is **for research and educational purposes only**.  
+> **Commercial use is NOT permitted** without explicit licensing from the original authors.
 
-## 📝 TODO
+This Cog implementation follows the original ThinkSound project's Apache 2.0 license for the code, but the model weights and research are subject to non-commercial restrictions.
 
-- ☐ Release training scripts for ThinkSound models
-- ☐ Open-source AudioCoT dataset and automated pipeline
-- ☐ Provide detailed documentation and API reference
-- ☐ Add support for additional modalities and downstream tasks
+For commercial licensing, contact the original research team.
 
----
+## Support
 
-## 📄 License
-
-This project is released under the [Apache 2.0 License](LICENSE).
-
-> **Note:**  
-> The code, models, and dataset are **for research and educational purposes only**.  
-> **Commercial use is NOT permitted.**
->
-> For commercial licensing, please contact the authors.
+- Original ThinkSound project: [github.com/liuhuadai/ThinkSound](https://github.com/liuhuadai/ThinkSound)
+- This Cog implementation: [github.com/zsxkib/cog-thinksound](https://github.com/zsxkib/cog-thinksound)
+- Issues with this Cog package: [Open an issue](https://github.com/zsxkib/cog-thinksound/issues)
 
 ---
 
-## 📖 Citation
+⭐ Star this repo if you find it useful!
 
-If you find ThinkSound useful in your research or work, please cite our paper:
-
-```bibtex
-@misc{liu2025thinksoundchainofthoughtreasoningmultimodal,
-      title={ThinkSound: Chain-of-Thought Reasoning in Multimodal Large Language Models for Audio Generation and Editing}, 
-      author={Huadai Liu and Jialei Wang and Kaicheng Luo and Wen Wang and Qian Chen and Zhou Zhao and Wei Xue},
-      year={2025},
-      eprint={2506.21448},
-      archivePrefix={arXiv},
-      primaryClass={eess.AS},
-      url={https://arxiv.org/abs/2506.21448}, 
-}
-```
-
----
-
-## 📬 Contact
-
-✨ Feel free to [open an issue](https://github.com/liuhuadai/ThinkSound/issues) or contact us via email ([liuhuadai@zju.edu.cn](mailto:liuhuadai@zju.edu.cn)) if you have any questions or suggestions!
+🐦 Follow [@zsakib_](https://twitter.com/zsakib_) for updates
